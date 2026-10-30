@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-HK">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>🐱💰 招財貓・六合彩「實時天時×歷史傾向」生成器 v6.0</title>
+  <style>
+    :root {
+      --bg: #0f172a; --card: rgba(30, 41, 59, 0.94); --accent: #f59e0b;
+      --accent-light: #fde047; --red-ball: #ef4444; --blue-ball: #3b82f6;
+      --green-ball: #10b981; --text: #f8fafc; --muted: #94a3b8;
+    }
+    * { box-sizing: border-box; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif; }
+    body {
+      margin: 0; padding: 16px; background: var(--bg); color: var(--text);
+      background-image: radial-gradient(circle at 15% 15%, rgba(245, 158, 11, 0.16) 0%, transparent 42%),
+                        radial-gradient(circle at 85% 80%, rgba(239, 68, 68, 0.15) 0%, transparent 42%);
+      min-height: 100vh; position: relative; overflow-x: hidden;
+    }
+    .maneki-bg {
+      position: fixed; bottom: 10px; width: 115px; height: 130px; opacity: 0.25; pointer-events: none; z-index: 0;
+      animation: floatCat 3.5s ease-in-out infinite alternate;
+    }
+    .maneki-left { left: 10px; }
+    .maneki-right { right: 10px; }
+    @keyframes floatCat {
+      0% { transform: translateY(0px); }
+      100% { transform: translateY(-10px); }
+    }
+    .ingot {
+      position: fixed; top: -40px; font-size: 24px; pointer-events: none; z-index: 1;
+      animation: fallIngot 6s linear infinite;
+    }
+    @keyframes fallIngot {
+      0% { transform: translateY(-40px) rotate(0deg); opacity: 0.9; }
+      100% { transform: translateY(105vh) rotate(360deg); opacity: 0; }
+    }
+    .container { max-width: 960px; margin: 0 auto; position: relative; z-index: 2; }
+    .header-box { text-align: center; margin-bottom: 10px; }
+    h1 { font-size: 1.38rem; margin: 0 0 4px 0; color: var(--accent); }
+    .subtitle { font-size: 0.82rem; color: var(--muted); }
+    .status-banner {
+      background: rgba(6, 78, 59, 0.95); border: 1px solid #10b981; color: #d1fae5;
+      padding: 10px 14px; border-radius: 10px; font-size: 0.85rem; margin-bottom: 12px;
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;
+    }
+    .hero-btn {
+      width: 100%; padding: 15px; font-size: 1.05rem; font-weight: 800;
+      background: linear-gradient(135deg, #f59e0b, #ef4444); color: #fff;
+      border: none; border-radius: 12px; cursor: pointer; margin-bottom: 12px;
+      box-shadow: 0 4px 20px rgba(245, 158, 11, 0.45);
+    }
+    .hero-btn:active { transform: scale(0.99); }
+    .panel-card {
+      background: var(--card); padding: 14px 16px; border-radius: 12px;
+      margin-bottom: 12px; border: 1px solid #475569;
+    }
+    .panel-header {
+      display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 8px;
+    }
+    .input-row {
+      display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px;
+      padding-top: 10px; border-top: 1px dashed #334155;
+    }
+    .draw-input {
+      flex: 1; min-width: 200px; background: #0f172a; border: 1px solid #475569; color: #fff;
+      padding: 9px 12px; border-radius: 8px; font-size: 0.88rem;
+    }
+    .mini-btn {
+      background: #3b82f6; color: #fff; border: none; padding: 9px 13px; border-radius: 8px;
+      cursor: pointer; font-weight: 700; font-size: 0.82rem;
+    }
+    .mini-btn.green { background: #10b981; }
+    .mini-btn.purple { background: #8b5cf6; }
+    .mini-btn.amber { background: #d97706; }
+    .picker-grid {
+      display: none; grid-template-columns: repeat(auto-fill, minmax(36px, 1fr)); gap: 6px;
+      margin-top: 12px; padding: 12px; background: #0b1120; border-radius: 10px; border: 1px solid #334155;
+    }
+    .picker-grid.show { display: grid; }
+    .pick-ball {
+      height: 34px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 0.82rem; font-weight: 700; cursor: pointer; background: #1e293b; color: #cbd5e1;
+      border: 2px solid transparent; user-select: none;
+    }
+    .pick-ball.selected { background: var(--accent); color: #0f172a; border-color: #fff; }
+    .chip-group { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+    .chip {
+      padding: 6px 12px; border-radius: 20px; font-size: 0.84rem; font-weight: 700;
+      cursor: pointer; border: 2px solid transparent; background: #334155; color: #fff;
+    }
+    .chip.active { border-color: var(--accent-light); background: var(--accent); color: #0f172a; }
+    .dashboard { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 10px; margin-bottom: 12px; }
+    .metric-card { background: var(--card); padding: 11px; border-radius: 10px; border: 1px solid #334155; text-align: center; }
+    .metric-label { font-size: 0.74rem; color: var(--muted); margin-bottom: 4px; }
+    .metric-val { font-size: 1.12rem; font-weight: 800; color: var(--accent); }
+    .metric-sub { font-size: 0.7rem; color: #cbd5e1; margin-top: 3px; }
+    .two-col { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 12px; margin-bottom: 12px; }
+    canvas { width: 100%; height: 170px; background: #0b1120; border-radius: 8px; border: 1px solid #1e293b; }
+    .hist-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; margin-top: 6px; }
+    .hist-table th, .hist-table td { padding: 5px 6px; text-align: left; border-bottom: 1px solid #334155; }
+    .hist-table th { color: var(--accent); }
+    .sim-badge { background: rgba(16, 185, 129, 0.2); color: #34d399; padding: 2px 6px; border-radius: 6px; font-weight: 700; }
+    .ticket {
+      background: var(--card); padding: 12px 15px; border-radius: 10px; margin-bottom: 9px;
+      display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;
+      border: 1px solid #334155; border-left: 5px solid var(--accent);
+    }
+    .ticket-top { border-left-color: #ec4899; background: rgba(39, 26, 56, 0.95); }
+    .balls { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+    .ball {
+      width: 34px; height: 34px; border-radius: 50%; display: inline-flex;
+      align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem;
+      color: #fff; box-shadow: inset 0 -2px 4px rgba(0,0,0,0.35); position: relative;
+    }
+    .ball.hot-star::after {
+      content: "★"; position: absolute; top: -6px; right: -4px; font-size: 10px; color: #fde047;
+    }
+    .banker-ball { border: 2px solid var(--accent-light); transform: scale(1.08); }
+    .meta { font-size: 0.75rem; color: var(--muted); margin-top: 2px; }
+    .action-row { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .sub-btn { background: #334155; color: #fff; border: none; padding: 9px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.84rem; }
+    .sub-btn:hover { background: #475569; }
+    .msg-tip { font-size: 0.8rem; color: var(--accent-light); margin-top: 8px; min-height: 18px; }
+  </style>
+</head>
+<body>
+
+<svg class="maneki-bg maneki-left" viewBox="0 0 220 250" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)">
+  <ellipse cx="110" cy="145" rx="68" ry="62" fill="#F8FAFC" stroke="#0F172A" stroke-width="4"/>
+  <circle cx="82" cy="130" r="8" fill="#0F172A"/><circle cx="138" cy="130" r="8" fill="#0F172A"/>
+  <ellipse cx="110" cy="145" rx="7" ry="5" fill="#EF4444"/>
+  <rect x="85" y="198" width="50" height="36" rx="14" fill="#F59E0B" stroke="#0F172A" stroke-width="3"/>
+  <text x="95" y="222" font-size="16" font-weight="bold" fill="#0F172A">千萬</text>
+</svg>
+
+<svg class="maneki-bg maneki-right" viewBox="0 0 220 250" xmlns="[http://www.w3.org/2000/svg](http://www.w3.org/2000/svg)">
+  <ellipse cx="110" cy="145" rx="68" ry="62" fill="#F8FAFC" stroke="#0F172A" stroke-width="4"/>
+  <circle cx="82" cy="130" r="8" fill="#0F172A"/><circle cx="138" cy="130" r="8" fill="#0F172A"/>
+  <ellipse cx="110" cy="145" rx="7" ry="5" fill="#EF4444"/>
+  <rect x="85" y="198" width="50" height="36" rx="14" fill="#F59E0B" stroke="#0F172A" stroke-width="3"/>
+  <text x="95" y="222" font-size="16" font-weight="bold" fill="#0F172A">開運</text>
+</svg>
+
+<div id="ingot-box">
+  <div class="ingot" style="left: 10%; animation-delay: 0s;">💰</div>
+  <div class="ingot" style="left: 35%; animation-delay: 1.8s;">🪙</div>
+  <div class="ingot" style="left: 65%; animation-delay: 3.2s;">💰</div>
+  <div class="ingot" style="left: 88%; animation-delay: 0.9s;">🪙</div>
+</div>
+
+<div class="container">
+  <div class="header-box">
+    <h1>🐱💰 終極招財貓・六合彩「實時天時 × 過往攪珠傾向」生成器 v6.0 🎯</h1>
+    <div class="subtitle">直連香港天文台 API ＋ 實時月球軌跡 ＋ 過往攪珠 KNN 氣候月相回歸 ＋ 48腳 100% 避開上期字</div>
+  </div>
+
+  <div class="status-banner">
+    <span id="live-status">🟢 招財貓引擎啟動中...</span>
+    <span id="update-time" style="font-size:0.78rem; opacity:0.9;"></span>
+  </div>
+
+  <button type="button" class="hero-btn" id="btn-hero" onclick="window.oneClickSyncAndDraw(true)">
+    🐱✨ 【誠心一鍵祈福】同步天文台實時數據 ＋ 對照過往攪珠傾向 ＋ 自動揀上期膽生成 6 條飛
+  </button>
+
+  <div class="panel-card">
+    <div class="panel-header">
+      <div style="font-size:0.88rem;">
+        <strong>🎯 上期攪珠號碼 <span id="draw-info-label" style="color:var(--accent);">(26/115期)</span>：</strong>
+        <span style="color:var(--muted); font-size:0.78rem;">點擊號碼可指定做「膽」；全部上期號碼已從「腳池」100% 剔除</span>
+      </div>
+      <div class="chip-group" id="last-draw-chips"></div>
+    </div>
+
+    <div class="input-row">
+      <input type="text" id="custom-draw-input" class="draw-input" value="2, 4, 18, 21, 24, 47, 31"
+             placeholder="輸入或貼上上期 7 個號碼（例：2, 4, 18, 21, 24, 47, 31）">
+      <button type="button" class="mini-btn" onclick="window.applyManualLastDraw()">✍️ 套用輸入</button>
+      <button type="button" class="mini-btn purple" onclick="window.toggleBallPicker()">🔢 1-49 點選盤</button>
+      <button type="button" class="mini-btn green" id="fetch-btn" onclick="window.autoFetchLatestDraw()">🌐 自動上網抓最新一期</button>
+      <button type="button" class="mini-btn amber" id="banker-mode-btn" onclick="window.toggleBankerMode()">🔁 膽模式：6飛共用單一膽</button>
+    </div>
+
+    <div id="ball-picker" class="picker-grid"></div>
+    <div id="draw-fetch-msg" class="msg-tip"></div>
+  </div>
+
+  <div class="dashboard">
+    <div class="metric-card">
+      <div class="metric-label">★ 當前選用上期膽</div>
+      <div class="metric-val" id="m-banker">21</div>
+      <div class="metric-sub" id="m-banker-sub">6飛共用上期膽</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">🌡️ 天文台實時氣溫 / 濕度</div>
+      <div class="metric-val" id="m-weather">26.5°C / 71%</div>
+      <div class="metric-sub" id="m-station">香港天文台</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">🌕 實時月照度 / 月齡</div>
+      <div class="metric-val" id="m-moon">87.0%</div>
+      <div class="metric-sub" id="m-age">月齡 18.2日｜傾角 -16.3°</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">📜 歷史相似天時均值 μ_hist</div>
+      <div class="metric-val" id="m-hist-mu">23.1 (σ=13.3)</div>
+      <div class="metric-sub">Top 8 相似期數回歸</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">📊 實證融合重心 μ / σ</div>
+      <div class="metric-val" id="m-norm">24.43 / 11.94</div>
+      <div class="metric-sub">55%歷史傾向 + 45%實時天時</div>
+    </div>
+    <div class="metric-card">
+      <div class="metric-label">🔥 歷史天時最旺尾數 / 旺字</div>
+      <div class="metric-val" id="m-hot-nums">16, 20, 25, 26</div>
+      <div class="metric-sub" id="m-hot-tails">旺尾：4尾、8尾、5尾</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="panel-card" style="margin-bottom:0;">
+      <div style="font-size:0.84rem; font-weight:700; margin-bottom:6px; color:var(--accent);">
+        📈 1–49號「常態分布 × 歷史天時傾向加成」權重圖 (紅點＝上期剔除字，綠柱＝歷史旺字)
+      </div>
+      <canvas id="weight-chart" width="460" height="170"></canvas>
+    </div>
+
+    <div class="panel-card" style="margin-bottom:0;">
+      <div style="font-size:0.84rem; font-weight:700; margin-bottom:4px; color:var(--accent);">
+        📜 過往最相似天時（氣溫＋濕度＋月相）六合彩攪珠對照表
+      </div>
+      <table class="hist-table">
+        <thead>
+          <tr><th>期數 (日期)</th><th>當日溫濕 / 月照</th><th>開出號碼</th><th>均值</th><th>相似度</th></tr>
+        </thead>
+        <tbody id="hist-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="action-row" style="margin-top:12px;">
+    <button type="button" class="sub-btn" onclick="window.oneClickSyncAndDraw(false)">🎲 保留當前膽號・按實證傾向重新洗牌抽腳</button>
+    <button type="button" class="sub-btn" onclick="window.copyTickets()">📋 一鍵複製 6 條注項及傾向報告</button>
+    <button type="button" class="sub-btn" id="sound-btn" onclick="window.toggleSound()">🔊 開彩聲效：已開</button>
+    <button type="button" class="sub-btn" id="ingot-btn" onclick="window.toggleIngots()">💰 元寶動畫：已開</button>
+  </div>
+
+  <div id="results"></div>
+</div>
+
+<script>
+  var HISTORY_DB = [
+    { id: "26/115", date: "2026-10-27", nums: [2, 4, 18, 21, 24, 47], sno: 31, temp: 27.0, hum: 72 },
+    { id: "26/114", date: "2026-10-24", nums: [9, 25, 26, 28, 44, 45], sno: 20, temp: 27.5, hum: 68 },
+    { id: "26/113", date: "2026-10-22", nums: [4, 11, 12, 16, 38, 48], sno: 5,  temp: 26.2, hum: 64 },
+    { id: "26/112", date: "2026-10-19", nums: [3, 14, 22, 29, 35, 41], sno: 17, temp: 28.1, hum: 75 },
+    { id: "26/111", date: "2026-10-17", nums: [7, 15, 20, 27, 33, 46], sno: 12, temp: 27.8, hum: 74 },
+    { id: "26/110", date: "2026-10-15", nums: [1, 10, 19, 23, 34, 42], sno: 28, temp: 26.8, hum: 70 },
+    { id: "26/109", date: "2026-10-12", nums: [6, 13, 21, 30, 36, 49], sno: 8,  temp: 28.5, hum: 76 },
+    { id: "26/108", date: "2026-10-10", nums: [5, 16, 24, 25, 39, 43], sno: 32, temp: 27.2, hum: 69 },
+    { id: "26/107", date: "2026-10-08", nums: [8, 12, 22, 26, 31, 40], sno: 19, temp: 26.0, hum: 65 },
+    { id: "26/106", date: "2026-10-05", nums: [2, 11, 17, 28, 37, 45], sno: 23, temp: 28.9, hum: 78 },
+    { id: "26/105", date: "2026-10-03", nums: [4, 15, 21, 29, 34, 47], sno: 14, temp: 29.2, hum: 73 },
+    { id: "26/104", date: "2026-09-29", nums: [9, 18, 20, 27, 35, 44], sno: 6,  temp: 26.6, hum: 71 },
+    { id: "26/103", date: "2026-09-26", nums: [1, 13, 24, 26, 38, 41], sno: 30, temp: 27.4, hum: 67 },
+    { id: "26/102", date: "2026-09-24", nums: [7, 14, 19, 25, 33, 48], sno: 22, temp: 28.0, hum: 77 },
+    { id: "26/101", date: "2026-09-21", nums: [3, 10, 21, 28, 36, 42], sno: 15, temp: 29.5, hum: 80 },
+    { id: "26/100", date: "2026-09-19", nums: [6, 12, 23, 29, 31, 46], sno: 34, temp: 30.1, hum: 79 },
+    { id: "26/099", date: "2026-09-17", nums: [5, 16, 22, 27, 39, 49], sno: 11, temp: 28.4, hum: 72 },
+    { id: "26/098", date: "2026-09-14", nums: [8, 15, 20, 24, 32, 43], sno: 26, temp: 29.0, hum: 75 },
+    { id: "26/097", date: "2026-09-12", nums: [2, 14, 18, 25, 37, 45], sno: 9,  temp: 30.4, hum: 81 },
+    { id: "26/096", date: "2026-09-09", nums: [4, 11, 19, 28, 35, 40], sno: 33, temp: 27.9, hum: 74 }
+  ];
+
+  var LAST_DRAW = [2, 4, 18, 21, 24, 47, 31];
+  var DRAW_LABEL = "26/115期 (2026-10-27)";
+  var currentBanker = 21;
+  var multiBankerMode = false;
+  var liveData = {
+    temp: 26.5, hum: 71, illum: 87.0, age: 18.2, dec: -16.3,
+    physMu: 26.0, physSigma: 10.2, histMu: 23.1, histSigma: 13.3,
+    mu: 24.43, sigma: 11.94, hotMap: {}, hotTails: [4, 8, 5]
+  };
+  var latestGroups = [];
+  var soundEnabled = true;
+  var ingotsEnabled = true;
+  var audioCtx = null;
+
+  var RED_LIST = [1,2,7,8,12,13,18,19,23,24,29,30,34,35,40,45,46];
+  var BLUE_LIST = [3,4,9,10,14,15,20,25,26,31,36,37,41,42,47,48];
+
+  function inArray(arr, val) {
+    for (var i = 0; i < arr.length; i++) {
+      if (arr[i] === val) return true;
+    }
+    return false;
+  }
+
+  function ballColor(n) {
+    if (inArray(RED_LIST, n)) return "var(--red-ball)";
+    if (inArray(BLUE_LIST, n)) return "var(--blue-ball)";
+    return "var(--green-ball)";
+  }
+
+  function pad(n) {
+    return n < 10 ? "0" + n : "" + n;
+  }
+
+  function calcRealtimeMoon(dateObj) {
+    var jd = (dateObj.getTime() / 86400000) + 2440587.5;
+    var synodic = 29.530588853, tropical = 27.321582;
+    var age = ((jd - 2451550.1) % synodic + synodic) % synodic;
+    var illum = (1 - Math.cos((2 * Math.PI * age) / synodic)) / 2 * 100;
+    var dec = 24.5 * Math.sin((2 * Math.PI * ((jd - 2451545.0) % tropical)) / tropical);
+    return {
+      age: parseFloat(age.toFixed(1)),
+      illum: parseFloat(illum.toFixed(1)),
+      dec: parseFloat(dec.toFixed(1))
+    };
+  }
+
+  function enrichHistoryDB() {
+    for (var i = 0; i < HISTORY_DB.length; i++) {
+      var d = HISTORY_DB[i];
+      var dt = new Date(d.date + "T21:30:00+08:00");
+      var m = calcRealtimeMoon(isNaN(dt.getTime()) ? new Date() : dt);
+      d.age = m.age;
+      d.illum = m.illum;
+      d.dec = m.dec;
+      var all = d.nums.slice(0);
+      if (d.sno) all.push(d.sno);
+      var sum = 0;
+      for (var j = 0; j < all.length; j++) sum += all[j];
+      var mean = sum / all.length;
+      var sq = 0;
+      for (var k = 0; k < all.length; k++) sq += Math.pow(all[k] - mean, 2);
+      d.mean = parseFloat(mean.toFixed(1));
+      d.std = parseFloat(Math.sqrt(sq / all.length).toFixed(1));
+    }
+  }
+
+  function playBeep(freq, duration, type) {
+    if (!soundEnabled) return;
+    try {
+      var Ctx = window.AudioContext || window.webkitAudioContext;
+      if (!Ctx) return;
+      if (!audioCtx) audioCtx = new Ctx();
+      if (audioCtx.state === "suspended") audioCtx.resume();
+      var osc = audioCtx.createOscillator();
+      var gain = audioCtx.createGain();
+      osc.type = type || "sine";
+      osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+      gain.gain.setValueAtTime(0.11, audioCtx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+      osc.connect(gain);
+      gain.connect(audioCtx.destination);
+      osc.start();
+      osc.stop(audioCtx.currentTime + duration);
+    } catch (e) {}
+  }
+
+  function playWinFanfare() {
+    if (!soundEnabled) return;
+    var notes = [523.25, 659.25, 783.99, 1046.50];
+    for (var i = 0; i < notes.length; i++) {
+      (function(f, idx) {
+        setTimeout(function() { playBeep(f, 0.22, "triangle"); }, idx * 130);
+      })(notes[i], i);
+    }
+  }
+
+  window.toggleSound = function() {
+    soundEnabled = !soundEnabled;
+    document.getElementById("sound-btn").textContent = soundEnabled ? "🔊 開彩聲效：已開" : "🔇 開彩聲效：已關";
+    if (soundEnabled) playBeep(880, 0.1, "sine");
+  };
+
+  window.toggleIngots = function() {
+    ingotsEnabled = !ingotsEnabled;
+    document.getElementById("ingot-box").style.display = ingotsEnabled ? "block" : "none";
+    document.getElementById("ingot-btn").textContent = ingotsEnabled ? "💰 元寶動畫：已開" : "💰 元寶動畫：已關";
+  };
+
+  window.toggleBankerMode = function() {
+    multiBankerMode = !multiBankerMode;
+    document.getElementById("banker-mode-btn").textContent = multiBankerMode
+      ? "🔁 膽模式：6飛分別用上期6個不同膽"
+      : "🔁 膽模式：6飛共用單一膽";
+    playBeep(660, 0.1, "sine");
+    runEmpiricalModelAndDraw();
+  };
+
+  window.toggleBallPicker = function() {
+    var picker = document.getElementById("ball-picker");
+    if (picker.className.indexOf("show") > -1) {
+      picker.className = "picker-grid";
+    } else {
+      picker.className = "picker-grid show";
+      renderBallPicker();
+    }
+  };
+
+  function renderBallPicker() {
+    var picker = document.getElementById("ball-picker");
+    if (picker.className.indexOf("show") === -1) return;
+    var html = "";
+    for (var i = 1; i <= 49; i++) {
+      var isSel = inArray(LAST_DRAW, i);
+      html += '<div class="pick-ball ' + (isSel ? 'selected' : '') + '" onclick="window.togglePickNumber(' + i + ')">' + pad(i) + '</div>';
+    }
+    picker.innerHTML = html;
+  }
+
+  window.togglePickNumber = function(n) {
+    playBeep(600, 0.06, "sine");
+    var idx = -1;
+    for (var i = 0; i < LAST_DRAW.length; i++) {
+      if (LAST_DRAW[i] === n) { idx = i; break; }
+    }
+    if (idx > -1) {
+      if (LAST_DRAW.length <= 1) return;
+      LAST_DRAW.splice(idx, 1);
+    } else {
+      if (LAST_DRAW.length >= 7) LAST_DRAW.shift();
+      LAST_DRAW.push(n);
+    }
+    document.getElementById("custom-draw-input").value = LAST_DRAW.join(", ");
+    renderBallPicker();
+    if (LAST_DRAW.length >= 6) {
+      updateLastDrawState(LAST_DRAW, "點選盤設定");
+      document.getElementById("draw-fetch-msg").textContent = "✅ 已點選 " + LAST_DRAW.length + " 個上期號碼：" + LAST_DRAW.map(pad).join(", ");
+    } else {
+      document.getElementById("draw-fetch-msg").textContent = "⏳ 已揀 " + LAST_DRAW.length + " 個號碼（請揀夠 6 至 7 個）";
+    }
+  };
+
+  window.applyManualLastDraw = function() {
+    var raw = document.getElementById("custom-draw-input").value;
+    var matches = raw.match(/\d+/g);
+    if (!matches) {
+      document.getElementById("draw-fetch-msg").textContent = "⚠️ 請輸入最少 6 至 7 個介乎 1 至 49 嘅號碼！";
+      return;
+    }
+    var nums = [];
+    for (var i = 0; i < matches.length; i++) {
+      var v = parseInt(matches[i], 10);
+      if (v >= 1 && v <= 49 && !inArray(nums, v)) {
+        nums.push(v);
+      }
+      if (nums.length === 7) break;
+    }
+    if (nums.length < 6) {
+      document.getElementById("draw-fetch-msg").textContent = "⚠️ 只識別到 " + nums.length + " 個有效號碼，請輸入最少 6 個號碼！";
+      return;
+    }
+    updateLastDrawState(nums, "手動更新");
+    document.getElementById("draw-fetch-msg").textContent = "✅ 已手動套用上期號碼：" + nums.map(pad).join(", ");
+    playWinFanfare();
+  };
+
+  window.autoFetchLatestDraw = function() {
+    var msgEl = document.getElementById("draw-fetch-msg");
+    var btn = document.getElementById("fetch-btn");
+    btn.disabled = true;
+    msgEl.textContent = "🔄 正在連線抓取最新一期攪珠結果...";
+    playBeep(520, 0.1, "sine");
+
+    if (typeof google !== "undefined" && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          btn.disabled = false;
+          if (res && res.numbers && res.numbers.length >= 6) {
+            updateLastDrawState(res.numbers, res.drawId || "最新一期");
+            msgEl.textContent = "✅ 成功自動更新【" + res.drawId + "】：" + res.numbers.map(pad).join(", ");
+            playWinFanfare();
+          } else {
+            msgEl.textContent = "⚠️ 暫時未能抓到外部結果，請直接喺左方輸入框修改或用 1-49 點選盤。";
+          }
+        })
+        .withFailureHandler(function() {
+          btn.disabled = false;
+          msgEl.textContent = "⚠️ 連線受阻，請直接喺輸入框打字或用「🔢 1-49 點選盤」更新。";
+        })
+        .fetchLatestMarkSixFromServer();
+      return;
+    }
+
+    // 瀏覽器直接開啟時嘗試 Fetch
+    fetch("[https://api.allorigins.win/get?url=](https://api.allorigins.win/get?url=)" + encodeURIComponent("[https://en.lottolyzer.com/history/hong-kong/mark-six](https://en.lottolyzer.com/history/hong-kong/mark-six)"))
+      .then(function(r) { return r.json(); })
+      .then(function(d) {
+        btn.disabled = false;
+        var text = d.contents || "";
+        var m = text.match(/(\d{2}\/\d{3})[\s\S]{1,120}?(\d{4}-\d{2}-\d{2})[\s\S]{1,120}?(\d+(?:\s*,\s*\d+){5})[\s\S]{1,80}?(\d{1,2})/);
+        if (m) {
+          var p = m[3].split(",");
+          var arr = [];
+          for (var i = 0; i < p.length; i++) arr.push(parseInt(p[i], 10));
+          arr.push(parseInt(m[4], 10));
+          updateLastDrawState(arr, m[1] + "期 (" + m[2] + ")");
+          msgEl.textContent = "✅ 成功抓取【" + m[1] + "期】：" + arr.map(pad).join(", ");
+          playWinFanfare();
+        } else {
+          msgEl.textContent = "⚠️ 請直接用「🔢 1-49 點選盤」或輸入框更新上期號碼。";
+        }
+      })
+      .catch(function() {
+        btn.disabled = false;
+        msgEl.textContent = "⚠️ 請直接用「🔢 1-49 點選盤」或輸入框更新上期號碼。";
+      });
+  };
+
+  function updateLastDrawState(nums, label) {
+    LAST_DRAW = nums;
+    DRAW_LABEL = label;
+    if (!inArray(LAST_DRAW, currentBanker)) {
+      currentBanker = LAST_DRAW[0];
+    }
+    document.getElementById("custom-draw-input").value = LAST_DRAW.join(", ");
+    document.getElementById("draw-info-label").textContent = "(" + DRAW_LABEL + ")";
+    renderChips();
+    renderBallPicker();
+    runEmpiricalModelAndDraw();
+  }
+
+  function renderChips() {
+    var box = document.getElementById("last-draw-chips");
+    var html = "";
+    for (var i = 0; i < LAST_DRAW.length; i++) {
+      var n = LAST_DRAW[i];
+      var active = (n === currentBanker) ? "active" : "";
+      html += '<span class="chip ' + active + '" onclick="window.selectBanker(' + n + ')">' + pad(n) + (i === 6 ? " (特別號)" : "") + '</span>';
+    }
+    box.innerHTML = html;
+  }
+
+  window.selectBanker = function(n) {
+    currentBanker = n;
+    playBeep(440, 0.08, "sine");
+    renderChips();
+    runEmpiricalModelAndDraw();
+  };
+
+  window.oneClickSyncAndDraw = function(randomBanker) {
+    if (randomBanker) {
+      playBeep(600, 0.12, "sine");
+      currentBanker = LAST_DRAW[Math.floor(Math.random() * LAST_DRAW.length)];
+    }
+    renderChips();
+
+    var now = new Date();
+    var moon = calcRealtimeMoon(now);
+    liveData.age = moon.age;
+    liveData.illum = moon.illum;
+    liveData.dec = moon.dec;
+
+    document.getElementById("m-moon").textContent = liveData.illum + "%";
+    document.getElementById("m-age").textContent = "月齡 " + liveData.age + "日｜傾角 " + liveData.dec + "°";
+
+    // 即時生成一次新組合（0延遲回應按鈕）
+    runEmpiricalModelAndDraw();
+    if (randomBanker) playWinFanfare();
+
+    var timeStr = now.toTimeString().slice(0, 8);
+    document.getElementById("update-time").textContent = "最後抽籤：" + timeStr;
+    document.getElementById("live-status").textContent = "🟢 招財貓已重新洗牌！（腳 100% 避開上期 " + LAST_DRAW.length + " 個字）正在背景同步天文台...";
+
+    // 優先使用 Google Apps Script 後端抓取天文台
+    if (typeof google !== "undefined" && google.script && google.script.run) {
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && res.weather) {
+            liveData.temp = res.weather.temp;
+            liveData.hum = res.weather.hum;
+            document.getElementById("m-weather").textContent = liveData.temp + "°C / " + liveData.hum + "%";
+            document.getElementById("m-station").textContent = res.weather.station;
+            document.getElementById("live-status").textContent = "🐱💰 祈福成功！已同步【" + res.weather.station + "】實時溫濕度 ＋ 歷史傾向回歸";
+            runEmpiricalModelAndDraw();
+          }
+        })
+        .getLiveAllDataFromServer();
+      return;
+    }
+
+    // 一般瀏覽器直接連線香港天文台 API
+    fetch("[https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc](https://data.weather.gov.hk/weatherAPI/opendata/weather.php?dataType=rhrread&lang=tc)")
+      .then(function(r) { return r.json(); })
+      .then(function(data) {
+        if (data.temperature && data.temperature.data && data.temperature.data.length > 0) {
+          var hko = data.temperature.data[0];
+          for (var i = 0; i < data.temperature.data.length; i++) {
+            if (data.temperature.data[i].place === "香港天文台") { hko = data.temperature.data[i]; break; }
+          }
+          liveData.temp = parseFloat(hko.value);
+        }
+        if (data.humidity && data.humidity.data && data.humidity.data.length > 0) {
+          liveData.hum = parseFloat(data.humidity.data[0].value);
+        }
+        document.getElementById("m-weather").textContent = liveData.temp + "°C / " + liveData.hum + "%";
+        document.getElementById("live-status").textContent = "🐱💰 祈福成功！已直連【香港天文台 API】實時溫濕度 ＋ 歷史傾向回歸";
+        runEmpiricalModelAndDraw();
+      })
+      .catch(function() {
+        document.getElementById("live-status").textContent = "🐱💰 祈福成功！已按天時月相與歷史傾向生成 6 條飛（腳 100% 避開上期字）";
+      });
+  };
+
+  function runEmpiricalModelAndDraw() {
+    for (var i = 0; i < HISTORY_DB.length; i++) {
+      var d = HISTORY_DB[i];
+      var dist = Math.sqrt(
+        Math.pow((d.temp - liveData.temp) / 5.0, 2) +
+        Math.pow((d.hum - liveData.hum) / 15.0, 2) +
+        Math.pow((d.illum - liveData.illum) / 30.0, 2) +
+        Math.pow((d.dec - liveData.dec) / 25.0, 2)
+      );
+      d.simScore = parseFloat((100 / (1 + dist)).toFixed(1));
+    }
+
+    var sortedHist = HISTORY_DB.slice(0).sort(function(a, b) { return b.simScore - a.simScore; });
+    var topK = sortedHist.slice(0, 8);
+
+    var totalSim = 0, sumMu = 0, sumSigma = 0;
+    for (var j = 0; j < topK.length; j++) {
+      totalSim += topK[j].simScore;
+      sumMu += topK[j].mean * topK[j].simScore;
+      sumSigma += topK[j].std * topK[j].simScore;
+    }
+    var histMu = sumMu / totalSim;
+    var histSigma = sumSigma / totalSim;
+
+    var physMu = Math.min(38, Math.max(12, liveData.temp + (liveData.dec / 15) + ((liveData.age - 15) * 0.2)));
+    var physSigma = Math.min(15, Math.max(5, (liveData.hum * 0.065) + (liveData.illum * 0.065)));
+
+    liveData.histMu = parseFloat(histMu.toFixed(2));
+    liveData.histSigma = parseFloat(histSigma.toFixed(2));
+    liveData.mu = parseFloat((0.55 * histMu + 0.45 * physMu).toFixed(2));
+    liveData.sigma = parseFloat((0.55 * histSigma + 0.45 * physSigma).toFixed(2));
+
+    var numFreq = {};
+    var tailFreq = {0:0,1:0,2:0,3:0,4:0,5:0,6:0,7:0,8:0,9:0};
+    for (var x = 1; x <= 49; x++) numFreq[x] = 0;
+
+    for (var k = 0; k < topK.length; k++) {
+      var all = topK[k].nums.slice(0);
+      if (topK[k].sno) all.push(topK[k].sno);
+      for (var m = 0; m < all.length; m++) {
+        var val = all[m];
+        numFreq[val] = (numFreq[val] || 0) + 1;
+        tailFreq[val % 10] = (tailFreq[val % 10] || 0) + 1;
+      }
+    }
+
+    var hotCandidates = [];
+    for (var n = 1; n <= 49; n++) {
+      if (!inArray(LAST_DRAW, n) && numFreq[n] >= 2) hotCandidates.push(n);
+    }
+    hotCandidates.sort(function(a, b) { return numFreq[b] - numFreq[a]; });
+    liveData.hotMap = {};
+    for (var h = 0; h < Math.min(10, hotCandidates.length); h++) {
+      liveData.hotMap[hotCandidates[h]] = true;
+    }
+
+    var tailArr = [0,1,2,3,4,5,6,7,8,9];
+    tailArr.sort(function(a, b) { return tailFreq[b] - tailFreq[a]; });
+    liveData.hotTails = tailArr.slice(0, 3);
+
+    document.getElementById("m-banker").textContent = multiBankerMode ? "上期6正碼" : pad(currentBanker);
+    document.getElementById("m-banker-sub").textContent = multiBankerMode ? "每飛不同上期膽" : "6飛共用上期膽";
+    document.getElementById("m-hist-mu").textContent = liveData.histMu + " (σ=" + liveData.histSigma + ")";
+    document.getElementById("m-norm").textContent = liveData.mu + " / " + liveData.sigma;
+    document.getElementById("m-hot-nums").textContent = hotCandidates.slice(0, 4).map(pad).join(", ") || "均衡";
+    document.getElementById("m-hot-tails").textContent = "旺尾：" + liveData.hotTails.map(function(t) { return t + "尾"; }).join("、");
+
+    var tbodyHtml = "";
+    for (var r = 0; r < Math.min(5, topK.length); r++) {
+      var item = topK[r];
+      tbodyHtml += "<tr>" +
+        "<td><strong>" + item.id + "</strong><br><span style='color:var(--muted);font-size:0.7rem;'>" + item.date + "</span></td>" +
+        "<td>" + item.temp + "°C / " + item.hum + "%<br><span style='color:var(--muted);font-size:0.7rem;'>月照 " + item.illum + "%</span></td>" +
+        "<td>" + item.nums.map(pad).join(", ") + " <span style='color:var(--accent);'>+" + pad(item.sno) + "</span></td>" +
+        "<td><strong>" + item.mean + "</strong></td>" +
+        "<td><span class='sim-badge'>" + item.simScore + "%</span></td>" +
+      "</tr>";
+    }
+    document.getElementById("hist-tbody").innerHTML = tbodyHtml;
+
+    generateTickets(numFreq, tailFreq);
+  }
+
+  function generateTickets(numFreq, tailFreq) {
+    var mu = liveData.mu, sigma = liveData.sigma;
+    var cleanPool = [];
+    var allWeights = [];
+
+    for (var x = 1; x <= 49; x++) {
+      var gaussW = Math.exp(-0.5 * Math.pow((x - mu) / sigma, 2));
+      var fCount = (numFreq && numFreq[x]) ? numFreq[x] : 0;
+      var tCount = (tailFreq && tailFreq[x % 10]) ? tailFreq[x % 10] : 0;
+      var empBoost = 1.0 + (0.18 * fCount) + (0.04 * tCount);
+      var isLast = inArray(LAST_DRAW, x);
+      var totalW = isLast ? 0 : (gaussW * empBoost);
+
+      allWeights.push({ x: x, gaussW: gaussW, totalW: totalW, isLast: isLast });
+
+      if (!isLast) {
+        var key = Math.log(Math.random()) / totalW;
+        cleanPool.push({ x: x, w: totalW, key: key });
+      }
+    }
+
+    cleanPool.sort(function(a, b) { return b.key - a.key; });
+
+    var groups = [[], [], [], [], [], []];
+    for (var tier = 0; tier < 7; tier++) {
+      for (var g = 0; g < 6; g++) {
+        var idx = tier * 6 + (tier % 2 === 0 ? g : (5 - g));
+        if (cleanPool[idx]) groups[g].push(cleanPool[idx].x);
+      }
+    }
+
+    var usedBonus = [];
+    for (var g2 = 0; g2 < 6; g2++) {
+      var bonusCandidates = [];
+      for (var c = 0; c < cleanPool.length; c++) {
+        var cand = cleanPool[c];
+        if (!inArray(groups[g2], cand.x) && !inArray(usedBonus, cand.x)) {
+          bonusCandidates.push({ x: cand.x, key: Math.log(Math.random()) / cand.w });
+        }
+      }
+      bonusCandidates.sort(function(a, b) { return b.key - a.key; });
+      var chosen = bonusCandidates[0].x;
+      usedBonus.push(chosen);
+      groups[g2].push(chosen);
+      groups[g2].sort(function(a, b) { return a - b; });
+    }
+
+    latestGroups = groups;
+    var top8 = [];
+    for (var t = 0; t < 8; t++) top8.push(cleanPool[t].x);
+    top8.sort(function(a, b) { return a - b; });
+
+    var html = "";
+    for (var i = 0; i < latestGroups.length; i++) {
+      var legs = latestGroups[i];
+      var ticketBanker = multiBankerMode ? (LAST_DRAW[i] || currentBanker) : currentBanker;
+      var sum = ticketBanker;
+      var ballsHtml = "";
+      for (var b = 0; b < legs.length; b++) {
+        sum += legs[b];
+        var starCls = liveData.hotMap[legs[b]] ? " hot-star" : "";
+        ballsHtml += '<span class="ball' + starCls + '" style="background:' + ballColor(legs[b]) + '">' + pad(legs[b]) + '</span>';
+      }
+      var avg = (sum / 9).toFixed(1);
+      html += '<div class="ticket">' +
+        '<div><strong>第 ' + (i + 1) + ' 條 (腳 100% 避開上期 ' + LAST_DRAW.length + ' 個字)</strong>' +
+        '<div class="meta">膽【' + pad(ticketBanker) + '】｜9字均值：' + avg + ' ｜ 56 注（★為歷史相似天時旺字）</div></div>' +
+        '<div class="balls">' +
+          '<span class="ball banker-ball" style="background:' + ballColor(ticketBanker) + '">' + pad(ticketBanker) + '</span>' +
+          '<span style="color:var(--muted);font-weight:bold;">＋</span>' + ballsHtml +
+        '</div></div>';
+    }
+
+    var topSum = currentBanker;
+    var topBallsHtml = "";
+    for (var tb = 0; tb < top8.length; tb++) {
+      topSum += top8[tb];
+      var tStar = liveData.hotMap[top8[tb]] ? " hot-star" : "";
+      topBallsHtml += '<span class="ball' + tStar + '" style="background:' + ballColor(top8[tb]) + '">' + pad(top8[tb]) + '</span>';
+    }
+    html += '<div class="ticket ticket-top">' +
+      '<div><strong>🔥 招財貓「天時 × 歷史傾向」最高權重精選 (Top 8)</strong>' +
+      '<div class="meta">集中揀選高斯峰值與歷史天時最旺號 ｜ 均值：' + (topSum / 9).toFixed(1) + ' ｜ 56 注</div></div>' +
+      '<div class="balls">' +
+        '<span class="ball banker-ball" style="background:' + ballColor(currentBanker) + '">' + pad(currentBanker) + '</span>' +
+        '<span style="color:var(--muted);font-weight:bold;">＋</span>' + topBallsHtml +
+      '</div></div>';
+
+    document.getElementById("results").innerHTML = html;
+    drawWeightChart(allWeights);
+  }
+
+  function drawWeightChart(allWeights) {
+    var canvas = document.getElementById("weight-chart");
+    if (!canvas || !canvas.getContext) return;
+    var ctx = canvas.getContext("2d");
+    var W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    var padX = 22, padY = 18;
+    var plotW = W - padX * 2, plotH = H - padY * 2;
+    var maxW = 1.2;
+    for (var m = 0; m < allWeights.length; m++) {
+      if (allWeights[m].totalW > maxW) maxW = allWeights[m].totalW;
+    }
+
+    var barW = Math.max(4, (plotW / 49) - 2);
+    for (var i = 0; i < allWeights.length; i++) {
+      var pt = allWeights[i];
+      var cx = padX + (i / 48) * plotW;
+      if (pt.isLast) {
+        ctx.fillStyle = "#ef4444";
+        ctx.beginPath();
+        ctx.arc(cx, H - padY - 4, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        var bh = (pt.totalW / maxW) * plotH;
+        ctx.fillStyle = liveData.hotMap[pt.x] ? "rgba(16, 185, 129, 0.8)" : "rgba(59, 130, 246, 0.45)";
+        ctx.fillRect(cx - barW / 2, H - padY - bh, barW, bh);
+      }
+    }
+
+    ctx.beginPath();
+    ctx.strokeStyle = "#f59e0b";
+    ctx.lineWidth = 2.2;
+    for (var j = 0; j < allWeights.length; j++) {
+      var p = allWeights[j];
+      var xPos = padX + (j / 48) * plotW;
+      var yPos = H - padY - (p.gaussW / maxW) * plotH;
+      if (j === 0) ctx.moveTo(xPos, yPos);
+      else ctx.lineTo(xPos, yPos);
+    }
+    ctx.stroke();
+  }
+
+  // 支援 Google Apps Script iframe 嘅剪貼簿複製方法
+  window.copyTickets = function() {
+    playBeep(750, 0.1, "sine");
+    var text = "🐱💰 招財貓六合彩「實時天時×歷史傾向」1膽8腳\n";
+    text += "📌 上期 (" + DRAW_LABEL + ")：" + LAST_DRAW.map(pad).join(", ") + " (已從腳池100%剔除)\n";
+    text += "🌡️ 實時氣溫 " + liveData.temp + "°C｜💧 濕度 " + liveData.hum + "%｜🌕 月照 " + liveData.illum + "%\n";
+    text += "📊 歷史相似天時均值 " + liveData.histMu + " ➔ 實證融合重心 μ=" + liveData.mu + ", σ=" + liveData.sigma + "\n";
+    text += "--------------------------------\n";
+    for (var i = 0; i < latestGroups.length; i++) {
+      var b = multiBankerMode ? (LAST_DRAW[i] || currentBanker) : currentBanker;
+      text += "第" + (i + 1) + "條：膽【" + pad(b) + "】＋ 腳 " + latestGroups[i].map(pad).join(", ") + "\n";
+    }
+
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.left = "-9999px";
+    document.body.appendChild(ta);
+    ta.select();
+    try {
+      document.execCommand("copy");
+      document.getElementById("draw-fetch-msg").textContent = "✅ 已成功複製 6 條注項到剪貼簿！可直接貼落 WhatsApp 分享。";
+    } catch (e) {
+      document.getElementById("draw-fetch-msg").textContent = "⚠️ 複製失敗，請手動選取複製。";
+    }
+    document.body.removeChild(ta);
+  };
+
+  // 啟動初始化
+  enrichHistoryDB();
+  window.oneClickSyncAndDraw(false);
+</script>
+</body>
+</html>
